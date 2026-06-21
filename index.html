@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>김포 솔터테니스장(실외) 실시간 현황판</title>
+    <title>솔터테니스 예약현황판</title>
     <style>
         body {
             font-family: 'Malgun Gothic', dotum, sans-serif;
@@ -13,7 +13,7 @@
             color: #333;
         }
         .container {
-            max-width: 1300px;
+            max-width: 1400px;
             margin: 0 auto;
             background: #fff;
             padding: 25px;
@@ -77,6 +77,11 @@
             color: white;
             font-weight: bold;
         }
+        th.section-header {
+            background-color: #2b5876;
+            font-size: 15px;
+            letter-spacing: 1px;
+        }
         tr:nth-child(even) {
             background-color: #f8f9fa;
         }
@@ -84,6 +89,7 @@
             background-color: #d4edda !important;
             color: #155724;
             font-weight: bold;
+            font-size: 16px;
             cursor: pointer;
         }
         .available:hover {
@@ -92,7 +98,8 @@
         .booked {
             background-color: #f8d7da;
             color: #721c24;
-            font-size: 12px;
+            font-weight: bold;
+            font-size: 15px;
         }
         .loading {
             text-align: center;
@@ -106,7 +113,7 @@
 <body>
 
 <div class="container">
-    <h1>🎾 김포 솔터테니스장(실외) 실시간 현황판</h1>
+    <h1>🎾 솔터테니스 예약현황판</h1>
 
     <div class="search-box">
         <label for="baseDate">날짜 선택 :</label>
@@ -118,20 +125,28 @@
         <table id="statusTable">
             <thead>
                 <tr>
-                    <th>이용 시간대</th>
-                    <th>1번 코트</th>
-                    <th>2번 코트</th>
-                    <th>3번 코트</th>
-                    <th>4번 코트</th>
-                    <th>5번 코트</th>
-                    <th>6번 코트</th>
-                    <th>7번 코트</th>
-                    <th>8번 코트</th>
+                    <th rowspan="2">이용 시간대</th>
+                    <th colspan="8" class="section-header">실외 코트</th>
+                    <th colspan="4" class="section-header">실내 코트</th>
+                </tr>
+                <tr>
+                    <th>1번</th>
+                    <th>2번</th>
+                    <th>3번</th>
+                    <th>4번</th>
+                    <th>5번</th>
+                    <th>6번</th>
+                    <th>7번</th>
+                    <th>8번</th>
+                    <th>A코트</th>
+                    <th>B코트</th>
+                    <th>C코트</th>
+                    <th>D코트</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 <tr>
-                    <td colspan="9" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td>
+                    <td colspan="13" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td>
                 </tr>
             </tbody>
         </table>
@@ -162,52 +177,54 @@
         { name: "야간4부 (21:00~22:00)", start: "21:00" }
     ];
 
+    // 코트 매핑 테이블 정의 (총 12개 코트)
+    const courtConfig = [
+        { type: "outdoor", label: "1번", code: 18 },
+        { type: "outdoor", label: "2번", code: 19 },
+        { type: "outdoor", label: "3번", code: 20 },
+        { type: "outdoor", label: "4번", code: 21 },
+        { type: "outdoor", label: "5번", code: 22 },
+        { type: "outdoor", label: "6번", code: 23 },
+        { type: "outdoor", label: "7번", code: 24 },
+        { type: "outdoor", label: "8번", code: 25 },
+        { type: "indoor", label: "A코트", code: 34 },
+        { type: "indoor", label: "B코트", code: 35 },
+        { type: "indoor", label: "C코트", code: 36 },
+        { type: "indoor", label: "D코트", code: 37 }
+    ];
+
     async function fetchAllCourtsData() {
         const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = `<tr><td colspan="9" class="loading">🔄 구글 대리인을 통해 실시간 데이터를 안전하게 분석 중입니다...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="13" class="loading">🔄 실내/실외 총 12개 코트 정보를 실시간 분석 중입니다...</td></tr>`;
 
         const rawDate = dateInput.value.replace(/-/g, '');
-        const startPlace = 18;
-        const totalCourts = 8;
         
         const masterData = {};
         timeSlots.forEach(slot => {
-            masterData[slot.start] = Array(totalCourts).fill({ status: "실패", detail: "" });
+            // courtConfig 배열의 길이(12)만큼 공간 확보
+            masterData[slot.start] = Array(courtConfig.length).fill({ status: "실패", detail: "" });
         });
 
-        const myGoogleProxy = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";                               
+        const myGoogleProxy = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
 
         const fetchPromises = [];
-        for (let i = 0; i < totalCourts; i++) {
-            const placeCode = startPlace + i;
-            const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=04&place_code=${placeCode}&base_date=${rawDate}&rent_type=1001`;
+        
+        // 코트 설정 배열 기반으로 루프 작동
+        courtConfig.forEach((court, idx) => {
+            const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=04&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
             const proxyUrl = `${myGoogleProxy}?url=${encodeURIComponent(targetUrl)}`;
 
-            const promise = fetch(proxyUrl, { 
-                method: "GET",
-                mode: "cors"
-            })
-            .then(res => {
-                // 어떤 형태로 응답이 오든 우선 텍스트(문자열)형태로 강제 변환하여 안전하게 취득
-                return res.text(); 
-            })
+            const promise = fetch(proxyUrl, { method: "GET", mode: "cors" })
+            .then(res => res.text())
             .then(text => {
                 if (!text) return;
-                
-                // 문자열에서 JSON 오브젝트 추출 안전성 강화
                 let data;
-                try {
-                    data = JSON.parse(text);
-                } catch(e) {
-                    console.error("JSON 변환 실패, 재시도 수행");
-                    return;
-                }
+                try { data = JSON.parse(text); } catch(e) { return; }
 
-                // 구글 웹앱 리다이렉트 응답 데이터 규격 검증 및 매핑
                 if (Array.isArray(data)) {
                     data.forEach(item => {
                         if (masterData[item.start_time]) {
-                            masterData[item.start_time][i] = {
+                            masterData[item.start_time][idx] = {
                                 status: item.use_yn === "N" ? "가능" : "완료",
                                 detail: item.detail || ""
                             };
@@ -216,11 +233,11 @@
                 }
             })
             .catch(err => {
-                console.error(`${i+1}번 코트 예외 발생:`, err);
+                console.error(`${court.label} 로드 예외 발생:`, err);
             });
             
             fetchPromises.push(promise);
-        }
+        });
 
         await Promise.all(fetchPromises);
         renderTable(masterData, rawDate);
@@ -240,22 +257,20 @@
             const courtsStatus = masterData[slot.start];
             courtsStatus.forEach((court, index) => {
                 const td = document.createElement('td');
-                const placeCode = 18 + index;
+                const targetCourt = courtConfig[index];
                 
                 if (court.status === "가능") {
                     td.className = "available";
-                    td.innerText = "예약 가능";
+                    td.innerText = "O"; // 4번 요구사항 반영
                     td.onclick = () => {
-                        window.open(`https://yeyak.guc.or.kr/fmcs/11?facilities_type=T&base_date=${rawDate}&rent_type=1001&center=GIMPO02&part=04&place=${placeCode}#regist_list`, '_blank');
+                        window.open(`https://yeyak.guc.or.kr/fmcs/11?facilities_type=T&base_date=${rawDate}&rent_type=1001&center=GIMPO02&part=04&place=${targetCourt.code}#regist_list`, '_blank');
                     };
                 } else if (court.status === "완료") {
                     td.className = "booked";
-                    td.innerText = court.detail ? court.detail : "예약 완료";
+                    td.innerText = "X"; // 4번 요구사항 반영
                 } else {
-                    // 데이터 수집 프로세스 보완으로 데이터가 비어있더라도 직관적으로 표현
-                    td.innerText = "예약 대기";
-                    td.style.color = "#888";
-                    td.style.fontSize = "12px";
+                    td.innerText = "-";
+                    td.style.color = "#aaa";
                 }
                 tr.appendChild(td);
             });
