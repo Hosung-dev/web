@@ -164,8 +164,9 @@
 
 <script>
     const dateInput = document.getElementById('baseDate');
-    const today = new Date();
-    dateInput.value = today.toISOString().split('T')[0];
+    
+    // 한국 표준시(KST) 기준으로 yyyy-mm-dd 형식의 날짜를 바로 뽑아옵니다.
+    dateInput.value = new Date().toLocaleDateString('sv-SE');
 
     const timeSlots = [
         { name: "주간1부 (06:00~07:00)", start: "06:00" },
