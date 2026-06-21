@@ -42,7 +42,7 @@
         input[type="date"] {
             padding: 8px 15px;
             font-size: 16px;
-            border: 1px solid #ced4da;
+            border: 2px solid #777777; /* 날짜 선택 창 테두리도 명확하게 변경 */
             border-radius: 4px;
         }
         button {
@@ -68,8 +68,10 @@
             font-size: 14px;
             text-align: center;
         }
+        
+        /* 🌟 [수정] 테이블 전체 테두리 선을 훨씬 진하고 또렷한 색(#555555)으로 변경 */
         th, td {
-            border: 1px solid #dee2e6;
+            border: 1px solid #555555;
             padding: 12px 8px;
         }
         th {
@@ -85,13 +87,20 @@
         tr:nth-child(even) {
             background-color: #f8f9fa;
         }
+        
+        /* 🌟 [수정] 실외 코트와 실내 코트 사이의 세로 경계선 두껍게 지정 (3px solid 검은색 계열) */
+        /* 헤더 부분 8번 코트 우측 테두리 */
+        th.border-divider, td.border-divider {
+            border-right: 3px solid #111111 !important;
+        }
+
         .available {
             background-color: #d4edda !important;
             color: #155724;
             font-weight: bold;
             font-size: 16px;
             cursor: pointer;
-                }
+        }
         .available:hover {
             background-color: #c3e6cb !important;
         }
@@ -126,7 +135,7 @@
             <thead>
                 <tr>
                     <th rowspan="2">이용 시간대</th>
-                    <th colspan="8" class="section-header">실외 코트</th>
+                    <th colspan="8" class="section-header border-divider">실외 코트</th>
                     <th colspan="4" class="section-header">실내 코트</th>
                 </tr>
                 <tr>
@@ -137,7 +146,7 @@
                     <th>5번</th>
                     <th>6번</th>
                     <th>7번</th>
-                    <th>8번</th>
+                    <th class="border-divider">8번</th>
                     <th>A코트</th>
                     <th>B코트</th>
                     <th>C코트</th>
@@ -169,7 +178,7 @@
         { name: "주간8부 (13:00~14:00)", start: "13:00" },
         { name: "주간9부 (14:00~15:00)", start: "14:00" },
         { name: "주간10부 (15:00~16:00)", start: "15:00" },
-        { name: "주간11부 (16:00~17:00)", start: "16:00" },
+        { name: "주간11부 (16:00~17:00)", min: "16:00", start: "16:00" },
         { name: "주간12부 (17:00~18:00)", start: "17:00" },
         { name: "야간1부 (18:00~19:00)", start: "18:00" },
         { name: "야간2부 (19:00~20:00)", start: "19:00" },
@@ -177,7 +186,6 @@
         { name: "야간4부 (21:00~22:00)", start: "21:00" }
     ];
 
-    // 🌟 파라미터 유연성을 위해 partCode 속성 추가 분리
     const courtConfig = [
         { type: "outdoor", label: "1번", code: 18, partCode: "04" },
         { type: "outdoor", label: "2번", code: 19, partCode: "04" },
@@ -186,8 +194,8 @@
         { type: "outdoor", label: "5번", code: 22, partCode: "04" },
         { type: "outdoor", label: "6번", code: 23, partCode: "04" },
         { type: "outdoor", label: "7번", code: 24, partCode: "04" },
-        { type: "outdoor", label: "8번", code: 25, partCode: "04" },
-        { type: "indoor", label: "A코트", code: 34, partCode: "13" }, // 실내 part_code 반영
+        { type: "outdoor", label: "8번", code: 25, partCode: "04" }, // index: 7 (8번코트)
+        { type: "indoor", label: "A코트", code: 34, partCode: "13" },
         { type: "indoor", label: "B코트", code: 35, partCode: "13" },
         { type: "indoor", label: "C코트", code: 36, partCode: "13" },
         { type: "indoor", label: "D코트", code: 37, partCode: "13" }
@@ -209,7 +217,6 @@
         const fetchPromises = [];
         
         courtConfig.forEach((court, idx) => {
-            // 🌟 실내/실외 설정 데이터 구분에 따라 part_code 파라미터를 다르게 조립합니다.
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
             const proxyUrl = `${myGoogleProxy}?url=${encodeURIComponent(targetUrl)}`;
 
@@ -258,15 +265,19 @@
                 const td = document.createElement('td');
                 const targetCourt = courtConfig[index];
                 
+                // 🌟 [수정] 8번 코트 자리에 해당하는 열 데이터 우측 테두리에 두꺼운 경계선 적용
+                if (index === 7) {
+                    td.className = "border-divider";
+                }
+                
                 if (court.status === "가능") {
-                    td.className = "available";
+                    td.classList.add("available");
                     td.innerText = "O";
                     td.onclick = () => {
-                        // 예약 클릭 이동 경로 또한 해당 코트의 알맞은 part_code를 전달하도록 연동
                         window.open(`https://yeyak.guc.or.kr/fmcs/11?facilities_type=T&base_date=${rawDate}&rent_type=1001&center=GIMPO02&part=${targetCourt.partCode}&place=${targetCourt.code}#regist_list`, '_blank');
                     };
                 } else if (court.status === "완료") {
-                    td.className = "booked";
+                    td.classList.add("booked");
                     td.innerText = "X";
                 } else {
                     td.innerText = "-";
