@@ -346,15 +346,12 @@
         const fetchPromises = config.courts.map((court, idx) => {
             const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
             
-            // 🌟 [수정] Request Method를 POST 방식으로 변경
-            // URL 파라미터 대신 요청 Body에 페이로드를 담아 구글 프록시 서버로 전송합니다.
-            return fetch(myGoogleProxy, { 
-                method: "POST", 
-                mode: "cors",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: `url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`
+            // 🌟 GET 방식으로 주소를 결합하여 깃허브 보안(CORS) 정책을 우회합니다.
+            const finalUrl = `${myGoogleProxy}?url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`;
+
+            return fetch(finalUrl, { 
+                method: "GET", 
+                mode: "cors"
             })
             .then(res => {
                 if (!res.ok) throw new Error('네트워크 응답 에러');
