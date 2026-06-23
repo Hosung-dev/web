@@ -175,9 +175,8 @@
 </div>
 
 <script>
-    const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
-    // 🌟 [변경] 제공해주신 우회 로직 포함 서암/파르코스 전용 스크립트 새 URL 적용
-    const PROXY_GIMPO = "https://script.google.com/macros/s/AKfycbw2-D2XrR7-SGxLN-PwJNTYuhuq6tcnp4FOT6aSf7185iowWIUaQPqOFbDsAo00T7_Y1Q/exec";
+    // 🌟 [핵심 변경] 차단당하지 않는 솔터 전용 구글 스크립트 주소 하나로 통합 사용
+    const FIXED_PROXY = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
 
     const dateInput = document.getElementById('baseDate');
     dateInput.value = new Date().toLocaleDateString('sv-SE');
@@ -308,7 +307,7 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
-            const finalUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
+            const finalUrl = `${FIXED_PROXY}?url=${encodeURIComponent(targetUrl)}`;
 
             return fetch(finalUrl, { method: "GET", mode: "cors" })
             .then(res => res.text())
@@ -342,21 +341,15 @@
         const masterData = {};
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
-        // 🌟 구글 스크립트 대신 공개 CORS 우회 프록시 사용 (차단 우회용)
-        const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
-
         const fetchPromises = config.courts.map((court, idx) => {
-            const rawPayload = `sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
-            
-            // 타겟 주소 조립
-            const targetUrl = `${court.url}?${rawPayload}`;
-            const finalUrl = `${CORS_PROXY}${targetUrl}`;
+            // 🌟 [수정] 서암/파르코스는 원래 GET 방식 파라미터 조립 형태로 전달해야 하므로 
+            // FIXED_PROXY 주소에 최종 타겟 웹 주소와 데이터를 GET 형식으로 일렬로 빌드합니다.
+            const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
+            const finalUrl = `${FIXED_PROXY}?url=${encodeURIComponent(targetUrl)}`;
 
             return fetch(finalUrl, { 
-                method: "GET",
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest"
-                }
+                method: "GET", 
+                mode: "cors"
             })
             .then(res => {
                 if (!res.ok) throw new Error('네트워크 응답 에러');
@@ -372,7 +365,6 @@
                     const timeKey = match[2];    
 
                     if (masterData[timeKey]) {
-                        masterData[masterData[timeKey] ? timeKey : ''] = masterData[timeKey]; // 안정성 보장
                         masterData[timeKey][idx] = {
                             status: className.includes('on') ? "가능" : "완료",
                             url: "http://www.gimposports.or.kr/sub04/sub01.php"
