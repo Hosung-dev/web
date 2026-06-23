@@ -334,25 +334,20 @@
     async function fetchGimposportsData() {
         const config = siteConfig[currentSite];
         const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 ${config.title.split(' ')[1]} 데이터를 POST 분석 중입니다...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 ${config.title.split(' ')[1]} 데이터를 분석 중입니다...</td></tr>`;
 
         const formattedDate = dateInput.value; 
         const masterData = {};
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
         const fetchPromises = config.courts.map((court, idx) => {
-            // 🌟 타겟 주소는 순수 PHP 파일 경로만 지정
-            const targetUrl = court.url;
-            
-            // 🌟 김포스포츠가 요구하는 필수 POST 데이터 조립
             const postData = new URLSearchParams();
             postData.append('sTeb', court.sTeb);
             postData.append('sRoom', court.label);
             postData.append('orderDate', formattedDate);
             postData.append('settingTimeSet', '2');
 
-            // 프록시 서버에 타겟 URL과 POST 바디 데이터를 함께 전송
-            return fetch(`${PROXY_GIMPO}?url=${encodeURIComponent(targetUrl)}`, {
+            return fetch(`${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
@@ -363,18 +358,22 @@
             .then(htmlText => {
                 if (!htmlText || htmlText.includes("프록시 연결 에러")) return;
 
-                // 정규식을 통해 label 태그 안의 class와 data 수집
-                const regex = /<label\s+[^>]*class=["']([^"']*)["']\s+[^>]*data=["']([^"']*)["']|<label\s+[^>]*data=["']([^"']*)["']\s+[^>]*class=["']([^"']*)["']/g;
+                // 🌟 실데이터 기반 초강력 정규식: 주석 처리된 label은 건너뛰고 실제 살아있는 <label> 태그만 타겟팅
+                // 공백 유니코드나 빈 공간(\s*)이 어디에 끼어있든 유연하게 낚아챕니다.
+                const regex = /<label\s+([^>]*?class=["']([^"']*)["'])?[^>]*?data=["']([^"']*)["']/g;
                 let match;
                 
                 while ((match = regex.exec(htmlText)) !== null) {
-                    let className = match[1] || match[4];
-                    let timeKey = match[2] || match[3];
+                    let className = match[2] || "";
+                    let timeKey = match[3] || "";
 
+                    // 눈에 보이지 않는 특수 유니코드 공백문자(\u00A0) 및 앞뒤 공백 완전 청소
                     if (timeKey) timeKey = timeKey.trim().replace(/[\u00A0\s]/g, "");
                     if (className) className = className.trim();
 
+                    // 06:00, 15:00 등 정의된 타임 슬롯이 맞는지 검증
                     if (masterData[timeKey]) {
+                        // 클래스명에 'on'이 있으면 예약 가능(O), 'no'가 있으면 예약 불가(X)
                         masterData[timeKey][idx] = {
                             status: className.includes('on') ? "가능" : "완료",
                             url: "http://www.gimposports.or.kr/sub04/sub01.php"
@@ -383,7 +382,7 @@
                 }
             })
             .catch(err => {
-                console.error(`${court.label} POST 로딩 실패:`, err);
+                console.error(`${court.label} 데이터 파싱 실패:`, err);
             });
         });
 
