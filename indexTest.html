@@ -175,7 +175,6 @@
 </div>
 
 <script>
-    // 🌟 [수정] 각 체육관별 전용 구글 프록시 URL 정의
     const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbwG4kAwzTfwAJtWIYGfn8brEm4-vQbSuQdgcJF1O8P6fD6ohzcL89vLSGY7n7UfU65OcQ/exec";
     const PROXY_GIMPO = "https://script.google.com/macros/s/AKfycbx7O9b1x31DKldXiwjz0mACSW5J6Z-l6X3e_Xi8_1kMe5GEcgeZuyopOiACQAeLqDoDPA/exec";
 
@@ -305,9 +304,16 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
-            const proxyUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
-
-            return fetch(proxyUrl, { method: "GET", mode: "cors" })
+            
+            // 🌟 [수정] 솔터는 POST 방식을 사용하여 Body 데이터 전송
+            return fetch(PROXY_SOLTER, { 
+                method: "POST", 
+                mode: "cors",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: `url=${encodeURIComponent(targetUrl)}`
+            })
             .then(res => res.text())
             .then(text => {
                 try {
@@ -342,7 +348,7 @@
         const fetchPromises = config.courts.map((court, idx) => {
             const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
             
-            // 🌟 [수정] 서암/파르코스 전용 새로 배포된 프록시 URL(PROXY_GIMPO)로 연동 주소 변경
+            // 🌟 [수정] 서암과 파르코스는 파라미터를 결합하는 GET 방식 유지
             const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`;
 
             return fetch(finalUrl, { 
