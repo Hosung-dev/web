@@ -175,7 +175,7 @@
 </div>
 
 <script>
-    const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";                          
+    const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbwG4kAwzTfwAJtWIYGfn8brEm4-vQbSuQdgcJF1O8P6fD6ohzcL89vLSGY7n7UfU65OcQ/exec";
     const PROXY_GIMPO = "https://script.google.com/macros/s/AKfycbx7O9b1x31DKldXiwjz0mACSW5J6Z-l6X3e_Xi8_1kMe5GEcgeZuyopOiACQAeLqDoDPA/exec";
 
     const dateInput = document.getElementById('baseDate');
@@ -305,15 +305,10 @@
         const fetchPromises = config.courts.map((court, idx) => {
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
             
-            // 🌟 [수정] 솔터는 POST 방식을 사용하여 Body 데이터 전송
-            return fetch(PROXY_SOLTER, { 
-                method: "POST", 
-                mode: "cors",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: `url=${encodeURIComponent(targetUrl)}`
-            })
+            // 🌟 [수정] 솔터테니스장도 파라미터를 조립하는 기존의 GET 방식으로 변경
+            const finalUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
+
+            return fetch(finalUrl, { method: "GET", mode: "cors" })
             .then(res => res.text())
             .then(text => {
                 try {
@@ -347,8 +342,6 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
-            
-            // 🌟 [수정] 서암과 파르코스는 파라미터를 결합하는 GET 방식 유지
             const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`;
 
             return fetch(finalUrl, { 
