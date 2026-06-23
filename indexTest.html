@@ -343,7 +343,7 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             // 🌟 [변경] 어떠한 프록시 주소도 거치지 않고 실제 김포스포츠 주소로 다이렉트 전송
-            const finalUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
+            const finalUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2&toYear=2026&toMonth=06&`;
 
             return fetch(finalUrl, { 
                 method: "GET"
