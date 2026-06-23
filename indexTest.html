@@ -175,8 +175,11 @@
 </div>
 
 <script>
-    // 🌟 [핵심 변경] 차단당하지 않는 솔터 전용 구글 스크립트 주소 하나로 통합 사용
-    const FIXED_PROXY = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
+    // 솔터용 기존 구글 앱스 스크립트 주소
+    const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
+    
+    // 🌟 [반영 완료] 서암/파르코스 우회용 클라우드플레어 워커 주소
+    const PROXY_GIMPO = "https://gimpo-proxy.urpinetrees.workers.dev";
 
     const dateInput = document.getElementById('baseDate');
     dateInput.value = new Date().toLocaleDateString('sv-SE');
@@ -307,7 +310,7 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
-            const finalUrl = `${FIXED_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+            const finalUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
 
             return fetch(finalUrl, { method: "GET", mode: "cors" })
             .then(res => res.text())
@@ -342,14 +345,12 @@
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
         const fetchPromises = config.courts.map((court, idx) => {
-            // 🌟 [수정] 서암/파르코스는 원래 GET 방식 파라미터 조립 형태로 전달해야 하므로 
-            // FIXED_PROXY 주소에 최종 타겟 웹 주소와 데이터를 GET 형식으로 일렬로 빌드합니다.
+            // 클라우드플레어 워커 프록시 규격에 맞게 파라미터 조립
             const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
-            const finalUrl = `${FIXED_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+            const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(targetUrl)}`;
 
             return fetch(finalUrl, { 
-                method: "GET", 
-                mode: "cors"
+                method: "GET"
             })
             .then(res => {
                 if (!res.ok) throw new Error('네트워크 응답 에러');
