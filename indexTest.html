@@ -342,20 +342,28 @@
         const masterData = {};
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
+        // 🌟 구글 스크립트 대신 공개 CORS 우회 프록시 사용 (차단 우회용)
+        const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
+
         const fetchPromises = config.courts.map((court, idx) => {
-            const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
-            const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`;
+            const rawPayload = `sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
+            
+            // 타겟 주소 조립
+            const targetUrl = `${court.url}?${rawPayload}`;
+            const finalUrl = `${CORS_PROXY}${targetUrl}`;
 
             return fetch(finalUrl, { 
-                method: "GET", 
-                mode: "cors"
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
             })
             .then(res => {
                 if (!res.ok) throw new Error('네트워크 응답 에러');
                 return res.text();
             })
             .then(htmlText => {
-                if (!htmlText || htmlText.includes("프록시 에러")) return;
+                if (!htmlText || htmlText.includes("Forbidden") || htmlText.includes("프록시 에러")) return;
 
                 const regex = /class="([^"]*)\s+labelDate"[^>]*data="([^"]*)"/g;
                 let match;
@@ -364,6 +372,7 @@
                     const timeKey = match[2];    
 
                     if (masterData[timeKey]) {
+                        masterData[masterData[timeKey] ? timeKey : ''] = masterData[timeKey]; // 안정성 보장
                         masterData[timeKey][idx] = {
                             status: className.includes('on') ? "가능" : "완료",
                             url: "http://www.gimposports.or.kr/sub04/sub01.php"
