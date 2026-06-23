@@ -343,15 +343,21 @@
         const masterData = {};
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
+        // 🌟 [변경] 구글 IP가 차단된 서암/파르코스 전용 오픈 프록시 서버 주소 정의
+        const openProxy = "https://cors-anywhere.herokuapp.com/";
+
         const fetchPromises = config.courts.map((court, idx) => {
             const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
             
-            // 🌟 구글 프록시를 빼고 체육회 URL로 직접 POST 요청을 보냅니다. (확장 프로그램 켠 상태 필수)
-            return fetch(court.url, { 
+            // 🌟 오픈 프록시 주소 뒤에 체육관 실제 POST 주소를 결합합니다.
+            const targetUrl = openProxy + court.url;
+
+            return fetch(targetUrl, { 
                 method: "POST", 
                 mode: "cors",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Requested-With": "XMLHttpRequest" // 오픈 프록시 우회 필수 헤더
                 },
                 body: rawPayload
             })
