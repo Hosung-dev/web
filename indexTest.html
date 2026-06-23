@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko"> 
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,12 +175,8 @@
 </div>
 
 <script>
-    // 솔터용 기존 구글 앱스 스크립트 주소
+    // 솔터테니스장은 프록시 우회 에러가 없으므로 기존 구글 스크립트 그대로 유지합니다.
     const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
-    
-    // proxy server
-    const PROXY_GIMPO = "https://api.allorigins.win/raw";
-    //const PROXY_GIMPO = "https://whateveranywhere.herokuapp.com/";
 
     const dateInput = document.getElementById('baseDate');
     dateInput.value = new Date().toLocaleDateString('sv-SE');
@@ -346,9 +342,8 @@
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
         const fetchPromises = config.courts.map((court, idx) => {
-            // 클라우드플레어 워커 프록시 규격에 맞게 파라미터 조립
-            const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
-            const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(targetUrl)}`;
+            // 🌟 [변경] 어떠한 프록시 주소도 거치지 않고 실제 김포스포츠 주소로 다이렉트 전송
+            const finalUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
 
             return fetch(finalUrl, { 
                 method: "GET"
@@ -358,7 +353,7 @@
                 return res.text();
             })
             .then(htmlText => {
-                if (!htmlText || htmlText.includes("Forbidden") || htmlText.includes("프록시 에러")) return;
+                if (!htmlText || htmlText.includes("Forbidden")) return;
 
                 const regex = /class="([^"]*)\s+labelDate"[^>]*data="([^"]*)"/g;
                 let match;
