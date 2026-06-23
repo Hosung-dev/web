@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -175,10 +175,7 @@
 </div>
 
 <script>
-    // 솔터테니스장은 기존에 성공하던 안정적인 구글 앱스 스크립트 프록시 유지
     const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
-    
-    // 🌟 [반영 완료] 서암/파르코스 차단을 뚫어낼 닷홈 전용 프록시 서버 주소
     const PROXY_GIMPO = "https://urpinetreez.dothome.co.kr/proxy.php";
 
     const dateInput = document.getElementById('baseDate');
@@ -274,7 +271,6 @@
 
     function switchSite(siteKey) {
         currentSite = siteKey;
-        
         document.querySelectorAll('.tab-menu .tab-btn').forEach(btn => btn.classList.remove('active'));
         
         const btns = document.querySelectorAll('.tab-menu .tab-btn');
@@ -294,7 +290,7 @@
     function fetchActiveSiteData() {
         if (currentSite === 'solter') {
             fetchSolterData();
-        } else if (currentSite === 'seoam' || currentSite === 'parcos') {
+        } else {
             fetchGimposportsData();
         }
     }
@@ -312,7 +308,7 @@
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
             const finalUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
 
-            return fetch(finalUrl, { method: "GET", mode: "cors" })
+            return fetch(finalUrl)
             .then(res => res.text())
             .then(text => {
                 try {
@@ -338,34 +334,35 @@
     async function fetchGimposportsData() {
         const config = siteConfig[currentSite];
         const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 ${config.title.split(' ')[1]} 데이터를 파싱 중입니다...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 ${config.title.split(' ')[1]} 데이터를 정밀 분석 중입니다...</td></tr>`;
 
-        const rawDate = dateInput.value.replace(/-/g, '');
+        const formattedDate = dateInput.value; 
         const masterData = {};
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
         const fetchPromises = config.courts.map((court, idx) => {
-            // 닷홈 PHP 프록시 주소와 타겟 파라미터 결합
-            const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
+            const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${formattedDate}&settingTimeSet=2`;
             const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(targetUrl)}`;
 
-            return fetch(finalUrl, { 
-                method: "GET"
-            })
-            .then(res => {
-                if (!res.ok) throw new Error('네트워크 응답 에러');
-                return res.text();
-            })
+            return fetch(finalUrl)
+            .then(res => res.text())
             .then(htmlText => {
-                if (!htmlText || htmlText.includes("Forbidden") || htmlText.includes("프록시 연결 에러")) return;
+                if (!htmlText || htmlText.includes("프록시 연결 에러")) return;
 
-                const regex = /class="([^"]*)\s+labelDate"[^>]*data="([^"]*)"/g;
+                // 🌟 [정규식 전면 전개수정] 유니코드 특수공백(\xa0) 및 지저분한 공백(\s*)을 전부 유연하게 대처하는 정규식
+                const regex = /<label\s+[^>]*class=["']([^"']*)["']\s+[^>]*data=["']([^"']*)["']|<label\s+[^>]*data=["']([^"']*)["']\s+[^>]*class=["']([^"']*)["']/g;
                 let match;
+                
                 while ((match = regex.exec(htmlText)) !== null) {
-                    const className = match[1]; 
-                    const timeKey = match[2];    
+                    let className = match[1] || match[4];
+                    let timeKey = match[2] || match[3];
+
+                    // 보이지 않는 특수공백 문자 제거 및 정제
+                    if (timeKey) timeKey = timeKey.trim().replace(/[\u00A0\s]/g, "");
+                    if (className) className = className.trim();
 
                     if (masterData[timeKey]) {
+                        // 클래스 이름에 'on'이 들어있으면 예약 가능, 'no'이면 예약 마감
                         masterData[timeKey][idx] = {
                             status: className.includes('on') ? "가능" : "완료",
                             url: "http://www.gimposports.or.kr/sub04/sub01.php"
@@ -374,7 +371,7 @@
                 }
             })
             .catch(err => {
-                console.error(`${court.label} 요청 실패:`, err);
+                console.error(`${court.label} 데이터 파싱 실패:`, err);
             });
         });
 
