@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>솔터테니스 예약현황판</title>
+    <title>테니스장 통합 예약현황판</title>
     <style>
         body {
             font-family: 'Malgun Gothic', dotum, sans-serif;
@@ -20,17 +20,48 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
+        
+        .tab-menu {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #e9ecef;
+            color: #495057;
+            border: 2px solid #dee2e6;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background-color: #1e3d59;
+            color: white;
+            border-color: #1e3d59;
+        }
+        .tab-btn:hover {
+            background-color: #dee2e6;
+        }
+        .tab-btn.active:hover {
+            background-color: #1e3d59;
+        }
+
         h1 {
             text-align: center;
             color: #1e3d59;
             margin-bottom: 25px;
         }
+        
         .search-box {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 15px;
-            margin-bottom: 25px;
+            margin-bottom: 12px; 
             background: #f1f3f5;
             padding: 15px;
             border-radius: 8px;
@@ -42,10 +73,10 @@
         input[type="date"] {
             padding: 8px 15px;
             font-size: 16px;
-            border: 2px solid #777777; /* 날짜 선택 창 테두리도 명확하게 변경 */
+            border: 2px solid #777777;
             border-radius: 4px;
         }
-        button {
+        .search-btn {
             padding: 9px 20px;
             font-size: 16px;
             background-color: #17a2b8;
@@ -55,7 +86,7 @@
             cursor: pointer;
             font-weight: bold;
         }
-        button:hover {
+        .search-btn:hover {
             background-color: #138496;
         }
         .table-responsive {
@@ -69,7 +100,6 @@
             text-align: center;
         }
         
-        /* 🌟 [수정] 테이블 전체 테두리 선을 훨씬 진하고 또렷한 색(#555555)으로 변경 */
         th, td {
             border: 1px solid #555555;
             padding: 12px 8px;
@@ -88,8 +118,6 @@
             background-color: #f8f9fa;
         }
         
-        /* 🌟 [수정] 실외 코트와 실내 코트 사이의 세로 경계선 두껍게 지정 (3px solid 검은색 계열) */
-        /* 헤더 부분 8번 코트 우측 테두리 */
         th.border-divider, td.border-divider {
             border-right: 3px solid #111111 !important;
         }
@@ -122,50 +150,35 @@
 <body>
 
 <div class="container">
-    <h1>🎾 솔터테니스 예약현황판</h1>
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchSite('solter')">솔터테니스장</button>
+        <button class="tab-btn" onclick="switchSite('seoam')">서암생활체육공원</button>
+        <button class="tab-btn" onclick="switchSite('parcos')">파르코스</button>
+    </div>
+
+    <h1 id="mainTitle">🎾 솔터테니스 예약현황판</h1>
 
     <div class="search-box">
         <label for="baseDate">날짜 선택 :</label>
         <input type="date" id="baseDate">
-        <button onclick="fetchAllCourtsData()">현황 조회하기</button>
+        <button class="search-btn" onclick="fetchActiveSiteData()">현황 조회하기</button>
     </div>
 
     <div class="table-responsive">
         <table id="statusTable">
-            <thead>
-                <tr>
-                    <th rowspan="2">이용 시간대</th>
-                    <th colspan="8" class="section-header border-divider">실외 코트</th>
-                    <th colspan="4" class="section-header">실내 코트</th>
-                </tr>
-                <tr>
-                    <th>1번</th>
-                    <th>2번</th>
-                    <th>3번</th>
-                    <th>4번</th>
-                    <th>5번</th>
-                    <th>6번</th>
-                    <th>7번</th>
-                    <th class="border-divider">8번</th>
-                    <th>A코트</th>
-                    <th>B코트</th>
-                    <th>C코트</th>
-                    <th>D코트</th>
-                </tr>
-            </thead>
+            <thead id="tableHead">
+                </thead>
             <tbody id="tableBody">
-                <tr>
-                    <td colspan="13" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td>
-                </tr>
-            </tbody>
+                </tbody>
         </table>
     </div>
 </div>
 
 <script>
+    const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
+    const PROXY_GIMPO = "https://urpinetreez.dothome.co.kr/proxy.php";
+
     const dateInput = document.getElementById('baseDate');
-    
-    // 한국 표준시(KST) 기준으로 yyyy-mm-dd 형식의 날짜를 바로 뽑아옵니다.
     dateInput.value = new Date().toLocaleDateString('sv-SE');
 
     const timeSlots = [
@@ -179,78 +192,205 @@
         { name: "주간8부 (13:00~14:00)", start: "13:00" },
         { name: "주간9부 (14:00~15:00)", start: "14:00" },
         { name: "주간10부 (15:00~16:00)", start: "15:00" },
-        { name: "주간11부 (16:00~17:00)", min: "16:00", start: "16:00" },
+        { name: "주간11부 (16:00~17:00)", start: "16:00" },
         { name: "주간12부 (17:00~18:00)", start: "17:00" },
         { name: "야간1부 (18:00~19:00)", start: "18:00" },
         { name: "야간2부 (19:00~20:00)", start: "19:00" },
         { name: "야간3부 (20:00~21:00)", start: "20:00" },
-        { name: "야간4부 (21:00~22:00)", start: "21:00" }
+        { name: "야간4부 (21:00~22:00)", start: "21:00" },
+        { name: "야간5부 (22:00~23:00)", start: "22:00" }, // 솔터/서암용 표기 유지 보장
+        { name: "야간6부 (23:00~24:00)", start: "23:00" }  // 🌟 파르코스용 23시 시간대 추가
     ];
 
-    const courtConfig = [
-        { type: "outdoor", label: "1번", code: 18, partCode: "04" },
-        { type: "outdoor", label: "2번", code: 19, partCode: "04" },
-        { type: "outdoor", label: "3번", code: 20, partCode: "04" },
-        { type: "outdoor", label: "4번", code: 21, partCode: "04" },
-        { type: "outdoor", label: "5번", code: 22, partCode: "04" },
-        { type: "outdoor", label: "6번", code: 23, partCode: "04" },
-        { type: "outdoor", label: "7번", code: 24, partCode: "04" },
-        { type: "outdoor", label: "8번", code: 25, partCode: "04" }, // index: 7 (8번코트)
-        { type: "indoor", label: "A코트", code: 34, partCode: "13" },
-        { type: "indoor", label: "B코트", code: 35, partCode: "13" },
-        { type: "indoor", label: "C코트", code: 36, partCode: "13" },
-        { type: "indoor", label: "D코트", code: 37, partCode: "13" }
-    ];
+    let currentSite = 'solter';
+    const siteConfig = {
+        solter: {
+            title: "🎾 솔터테니스 예약현황판",
+            headers: `
+                <tr>
+                    <th rowspan="2">이용 시간대</th>
+                    <th colspan="8" class="section-header border-divider">실외 코트</th>
+                    <th colspan="4" class="section-header">실내 코트</th>
+                </tr>
+                <tr>
+                    <th>1번</th><th>2번</th><th>3번</th><th>4번</th><th>5번</th><th>6번</th><th>7번</th><th class="border-divider">8번</th>
+                    <th>A코트</th><th>B코트</th><th>C코트</th><th>D코트</th>
+                </tr>
+            `,
+            colCount: 13,
+            courts: [
+                { label: "1번", code: 18, partCode: "04" }, { label: "2번", code: 19, partCode: "04" },
+                { label: "3번", code: 20, partCode: "04" }, { label: "4번", code: 21, partCode: "04" },
+                { label: "5번", code: 22, partCode: "04" }, { label: "6번", code: 23, partCode: "04" },
+                { label: "7번", code: 24, partCode: "04" }, { label: "8번", code: 25, partCode: "04", isDivider: true },
+                { label: "A코트", code: 34, partCode: "13" }, { label: "B코트", code: 35, partCode: "13" },
+                { label: "C코트", code: 36, partCode: "13" }, { label: "D코트", code: 37, partCode: "13" }
+            ]
+        },
+        seoam: {
+            title: "🌿 서암생활체육공원 테니스 예약현황판",
+            headers: `
+                <tr>
+                    <th rowspan="2">이용 시간대</th>
+                    <th colspan="3" class="section-header">테니스 코트</th>
+                </tr>
+                <tr>
+                    <th>1번 코트</th><th>2번 코트</th><th>3번 코트</th>
+                </tr>
+            `,
+            colCount: 4,
+            courts: [
+                { label: "A관", sTeb: "b", url: "http://www.gimposports.or.kr/skin/orders/timeBoard.php" },
+                { label: "B관", sTeb: "b", url: "http://www.gimposports.or.kr/skin/orders/timeBoard.php" },
+                { label: "C관", sTeb: "b", url: "http://www.gimposports.or.kr/skin/orders/timeBoard.php" }
+            ]
+        },
+        parcos: {
+            title: "🏸 파르코스 테니스 예약현황판",
+            headers: `
+                <tr>
+                    <th rowspan="2">이용 시간대</th>
+                    <th colspan="8" class="section-header">파르코스 코트</th>
+                </tr>
+                <tr>
+                    <th>1번 코트</th><th>2번 코트</th><th>3번 코트</th><th>4번 코트</th>
+                    <th>5번 코트</th><th>6번 코트</th><th>7번 코트</th><th>8번 코트</th>
+                </tr>
+            `,
+            colCount: 9,
+            courts: [
+                { label: "A관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "B관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "C관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "D관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "E관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "F관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "G관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" },
+                { label: "H관", sTeb: "g", url: "http://www.gimposports.or.kr/skin/orders/timeBoard4.php" }
+            ]
+        }
+    };
 
-    async function fetchAllCourtsData() {
+    function switchSite(siteKey) {
+        currentSite = siteKey;
+        document.querySelectorAll('.tab-menu .tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        const btns = document.querySelectorAll('.tab-menu .tab-btn');
+        if(siteKey === 'solter') btns[0].classList.add('active');
+        if(siteKey === 'seoam') btns[1].classList.add('active');
+        if(siteKey === 'parcos') btns[2].classList.add('active');
+
+        const config = siteConfig[currentSite];
+        document.getElementById('mainTitle').innerText = config.title;
+        document.getElementById('tableHead').innerHTML = config.headers;
+        document.getElementById('tableBody').innerHTML = `<tr><td colspan="${config.colCount}" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td></tr>`;
+    }
+
+    document.getElementById('tableHead').innerHTML = siteConfig[currentSite].headers;
+    document.getElementById('tableBody').innerHTML = `<tr><td colspan="${siteConfig[currentSite].colCount}" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td></tr>`;
+
+    function fetchActiveSiteData() {
+        if (currentSite === 'solter') {
+            fetchSolterData();
+        } else {
+            fetchGimposportsData();
+        }
+    }
+
+    async function fetchSolterData() {
+        const config = siteConfig.solter;
         const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = `<tr><td colspan="13" class="loading">🔄 실내/실외 코트 설정을 각각 매핑하여 로딩 중입니다...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 솔터테니스장 데이터를 로딩 중입니다...</td></tr>`;
 
         const rawDate = dateInput.value.replace(/-/g, '');
-        
         const masterData = {};
-        timeSlots.forEach(slot => {
-            masterData[slot.start] = Array(courtConfig.length).fill({ status: "실패", detail: "" });
-        });
+        timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
-        const myGoogleProxy = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
-
-        const fetchPromises = [];
-        
-        courtConfig.forEach((court, idx) => {
+        const fetchPromises = config.courts.map((court, idx) => {
             const targetUrl = `https://yeyak.guc.or.kr/rest/facilities/place_time_state_list?company_code=GIMPO02&part_code=${court.partCode}&place_code=${court.code}&base_date=${rawDate}&rent_type=1001`;
-            const proxyUrl = `${myGoogleProxy}?url=${encodeURIComponent(targetUrl)}`;
+            const finalUrl = `${PROXY_SOLTER}?url=${encodeURIComponent(targetUrl)}`;
 
-            const promise = fetch(proxyUrl, { method: "GET", mode: "cors" })
+            return fetch(finalUrl)
             .then(res => res.text())
             .then(text => {
-                if (!text) return;
-                let data;
-                try { data = JSON.parse(text); } catch(e) { return; }
-
-                if (Array.isArray(data)) {
-                    data.forEach(item => {
-                        if (masterData[item.start_time]) {
-                            masterData[item.start_time][idx] = {
-                                status: item.use_yn === "N" ? "가능" : "완료",
-                                detail: item.detail || ""
-                            };
-                        }
-                    });
-                }
-            })
-            .catch(err => {
-                console.error(`${court.label} 로드 예외 발생:`, err);
-            });
-            
-            fetchPromises.push(promise);
+                try {
+                    let data = JSON.parse(text);
+                    if (Array.isArray(data)) {
+                        data.forEach(item => {
+                            if (masterData[item.start_time]) {
+                                masterData[item.start_time][idx] = {
+                                    status: item.use_yn === "N" ? "가능" : "완료",
+                                    url: `https://yeyak.guc.or.kr/fmcs/11?facilities_type=T&base_date=${rawDate}&rent_type=1001&center=GIMPO02&part=${court.partCode}&place=${court.code}#regist_list`
+                                };
+                            }
+                        });
+                    }
+                } catch(e) {}
+            }).catch(() => {});
         });
 
         await Promise.all(fetchPromises);
-        renderTable(masterData, rawDate);
+        renderTable(masterData);
     }
 
-    function renderTable(masterData, rawDate) {
+    async function fetchGimposportsData() {
+        const config = siteConfig[currentSite];
+        const tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = `<tr><td colspan="${config.colCount}" class="loading">🔄 ${config.title.split(' ')[1]} 데이터를 분석 중입니다...</td></tr>`;
+
+        // 🌟 [수정] 2026-06-25 포맷에서 하이픈(-)을 모두 제거하여 20260625 형식으로 변환합니다.
+        const formattedDate = dateInput.value.replace(/-/g, ''); 
+        
+        const masterData = {};
+        timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
+
+        const fetchPromises = config.courts.map((court, idx) => {
+            const postData = new URLSearchParams();
+            postData.append('sTeb', court.sTeb);
+            postData.append('sRoom', court.label);
+            postData.append('orderDate', formattedDate); // 변환된 8자리 날짜가 주입됩니다.
+            postData.append('settingTimeSet', '2');
+
+            return fetch(`${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: postData.toString()
+            })
+            .then(res => res.text())
+            .then(htmlText => {
+                if (!htmlText || htmlText.includes("프록시 연결 에러")) return;
+
+                const regex = /<label\s+[^>]*class=["']([^"']*)["']\s+[^>]*data=["']([^"']*)["']|<label\s+[^>]*data=["']([^"']*)["']\s+[^>]*class=["']([^"']*)["']/g;
+                let match;
+                
+                while ((match = regex.exec(htmlText)) !== null) {
+                    let className = match[1] || match[4];
+                    let timeKey = match[2] || match[3];
+
+                    if (timeKey) timeKey = timeKey.trim().replace(/[\u00A0\s]/g, "");
+                    if (className) className = className.trim();
+
+                    if (masterData[timeKey]) {
+                        masterData[timeKey][idx] = {
+                            status: className.includes('on') ? "가능" : "완료",
+                            url: "http://www.gimposports.or.kr/sub04/sub01.php"
+                        };
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(`${court.label} 데이터 파싱 실패:`, err);
+            });
+        });
+
+        await Promise.all(fetchPromises);
+        renderTable(masterData);
+    }
+
+    function renderTable(masterData) {
+        const config = siteConfig[currentSite];
         const tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = "";
 
@@ -264,19 +404,15 @@
             const courtsStatus = masterData[slot.start];
             courtsStatus.forEach((court, index) => {
                 const td = document.createElement('td');
-                const targetCourt = courtConfig[index];
                 
-                // 🌟 [수정] 8번 코트 자리에 해당하는 열 데이터 우측 테두리에 두꺼운 경계선 적용
-                if (index === 7) {
+                if (currentSite === 'solter' && config.courts[index].isDivider) {
                     td.className = "border-divider";
                 }
                 
                 if (court.status === "가능") {
                     td.classList.add("available");
                     td.innerText = "O";
-                    td.onclick = () => {
-                        window.open(`https://yeyak.guc.or.kr/fmcs/11?facilities_type=T&base_date=${rawDate}&rent_type=1001&center=GIMPO02&part=${targetCourt.partCode}&place=${targetCourt.code}#regist_list`, '_blank');
-                    };
+                    td.onclick = () => { window.open(court.url, '_blank'); };
                 } else if (court.status === "완료") {
                     td.classList.add("booked");
                     td.innerText = "X";
