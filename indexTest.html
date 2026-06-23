@@ -175,8 +175,11 @@
 </div>
 
 <script>
-    // 솔터테니스장은 프록시 우회 에러가 없으므로 기존 구글 스크립트 그대로 유지합니다.
+    // 솔터테니스장은 기존에 성공하던 안정적인 구글 앱스 스크립트 프록시 유지
     const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
+    
+    // 🌟 [반영 완료] 서암/파르코스 차단을 뚫어낼 닷홈 전용 프록시 서버 주소
+    const PROXY_GIMPO = "https://urpinetreez.dothome.co.kr/proxy.php";
 
     const dateInput = document.getElementById('baseDate');
     dateInput.value = new Date().toLocaleDateString('sv-SE');
@@ -342,8 +345,9 @@
         timeSlots.forEach(slot => { masterData[slot.start] = Array(config.courts.length).fill({ status: "실패" }); });
 
         const fetchPromises = config.courts.map((court, idx) => {
-            // 🌟 [변경] 어떠한 프록시 주소도 거치지 않고 실제 김포스포츠 주소로 다이렉트 전송
-            const finalUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2&toYear=2026&toMonth=06&`;
+            // 닷홈 PHP 프록시 주소와 타겟 파라미터 결합
+            const targetUrl = `${court.url}?sTeb=${court.sTeb}&sRoom=${encodeURIComponent(court.label)}&orderDate=${rawDate}&settingTimeSet=2`;
+            const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(targetUrl)}`;
 
             return fetch(finalUrl, { 
                 method: "GET"
@@ -353,7 +357,7 @@
                 return res.text();
             })
             .then(htmlText => {
-                if (!htmlText || htmlText.includes("Forbidden")) return;
+                if (!htmlText || htmlText.includes("Forbidden") || htmlText.includes("프록시 연결 에러")) return;
 
                 const regex = /class="([^"]*)\s+labelDate"[^>]*data="([^"]*)"/g;
                 let match;
