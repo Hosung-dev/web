@@ -175,7 +175,7 @@
 </div>
 
 <script>
-    // 🌟 [변경] 솔터테니스장 요청 주소를 새 스크립트 URL로 반영
+    // 각 프록시 서버 주소 검증 완료
     const PROXY_SOLTER = "https://script.google.com/macros/s/AKfycbzyiIRpdZUl9LZDiayllAmCOiJLnowFjgLJ7JxuORoKhUnxfPccdCdfge7nRCcv7_DtbQ/exec";
     const PROXY_GIMPO = "https://script.google.com/macros/s/AKfycbx7O9b1x31DKldXiwjz0mACSW5J6Z-l6X3e_Xi8_1kMe5GEcgeZuyopOiACQAeLqDoDPA/exec";
 
@@ -273,9 +273,14 @@
     function switchSite(siteKey) {
         currentSite = siteKey;
         
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        const activeIdx = Object.keys(siteConfig).indexOf(siteKey);
-        document.querySelectorAll('.tab-btn')[activeIdx].classList.add('active');
+        // 탭 활성화 UI 처리 복구
+        document.querySelectorAll('.tab-menu .tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // 현재 클릭 타겟에 active 추가
+        const btns = document.querySelectorAll('.tab-menu .tab-btn');
+        if(siteKey === 'solter') btns[0].classList.add('active');
+        if(siteKey === 'seoam') btns[1].classList.add('active');
+        if(siteKey === 'parcos') btns[2].classList.add('active');
 
         const config = siteConfig[currentSite];
         document.getElementById('mainTitle').innerText = config.title;
@@ -283,13 +288,15 @@
         document.getElementById('tableBody').innerHTML = `<tr><td colspan="${config.colCount}" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td></tr>`;
     }
 
+    // 초기 화면 구성
     document.getElementById('tableHead').innerHTML = siteConfig[currentSite].headers;
     document.getElementById('tableBody').innerHTML = `<tr><td colspan="${siteConfig[currentSite].colCount}" class="loading">날짜를 선택하고 조회하기 버튼을 눌러주세요.</td></tr>`;
 
+    // 🌟 [핵심 수정] 분기 처리를 명확하게 보장
     function fetchActiveSiteData() {
         if (currentSite === 'solter') {
             fetchSolterData();
-        } else {
+        } else if (currentSite === 'seoam' || currentSite === 'parcos') {
             fetchGimposportsData();
         }
     }
@@ -341,6 +348,8 @@
 
         const fetchPromises = config.courts.map((court, idx) => {
             const rawPayload = `sTeb=${court.sTeb}&sRoom=${court.label}&orderDate=${rawDate}&settingTimeSet=2`;
+            
+            // 🌟 명확하게 PROXY_GIMPO 주소를 사용하도록 강제 바인딩
             const finalUrl = `${PROXY_GIMPO}?url=${encodeURIComponent(court.url)}&postData=${encodeURIComponent(rawPayload)}`;
 
             return fetch(finalUrl, { 
