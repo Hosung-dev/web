@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎾 테니스 코트 전체 실시간 알림 매니저</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Malgun Gothic', sans-serif; }
+        .card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .table th { background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <h2 class="text-center mb-4">🎾 테니스 코트 전체 실시간 알림 매니저</h2>
+    
+    <!-- 알림 등록 카드 -->
+    <div class="card p-4 mb-5 bg-white">
+        <h4 class="mb-3 text-primary">🔔 새 알림 예약 등록 (전체 코트 감시)</h4>
+        <form id="jobForm" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">테니스장 선택</label>
+                <select id="site" class="form-select" required>
+                    <option value="솔터">솔터 테니스장 (전체 12개 코트)</option>
+                    <option value="서암">서암 테니스장 (전체 3개 코트)</option>
+                    <option value="파르코스">파르코스 테니스장 (전체 8개 코트)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">예약 희망일</label>
+                <input type="date" id="date" class="form-select" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">수신 이메일</label>
+                <input type="email" id="email" class="form-control" placeholder="example@daum.net" required>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label fw-bold">이용 시간 (슬롯 단위)</label>
+                <select id="duration" class="form-select" required onchange="toggleTime2()">
+                    <option value="1">1시간 (1개 슬롯)</option>
+                    <option value="2" selected>2시간 (연속 2개 슬롯)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">시작 시간 (Time 1)</label>
+                <select id="time1" class="form-select" required></select>
+            </div>
+            <div class="col-md-3" id="time2_container">
+                <label class="form-label fw-bold">종료 시간 (Time 2)</label>
+                <select id="time2" class="form-select"></select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2">⚡ 실시간 감시 시작</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 대기열 리스트 카드 -->
+    <div class="card p-4 bg-white">
+        <h4 class="mb-3 text-success">📋 현재 가동 중인 알림 리스트</h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-center">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>테니스장</th>
+                        <th>감시 코트 대상</th>
+                        <th>날짜</th>
+                        <th>시간설정</th>
+                        <th>이메일</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="jobList">
+                    <!-- 데이터 동적 삽입 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// 시간 슬롯 제너레이터 (06:00 ~ 22:00)
+function initTimeOptions() {
+    const t1 = document.getElementById('time1');
+    const t2 = document.getElementById('time2');
+    t1.innerHTML = ''; t2.innerHTML = '';
+    for(let i=6; i<=22; i++) {
+        let hr = i < 10 ? '0'+i : i;
+        let optStr = `${hr}:00`;
+        t1.options.add(new Option(optStr, optStr));
+        t2.options.add(new Option(optStr, optStr));
+    }
+    t1.value = "18:00"; updateTime2Default();
+}
+
+function updateTime2Default() {
+    const t1Val = document.getElementById('time1').value;
+    const t2 = document.getElementById('time2');
+    let startHr = parseInt(t1Val.split(':')[0]);
+    let endHr = startHr + 1;
+    let endStr = endHr < 10 ? '0'+endHr+':00' : endHr+':00';
+    t2.value = endStr;
+}
+
+function toggleTime2() {
+    const dur = document.getElementById('duration').value;
+    const container = document.getElementById('time2_container');
+    if(dur === '1') {
+        container.style.visibility = 'hidden';
+    } else {
+        container.style.visibility = 'visible';
+        updateTime2Default();
+    }
+}
+
+document.getElementById('time1').addEventListener('change', updateTime2Default);
+
+// 데이터 로드 및 렌더링
+// 데이터 로드 및 렌더링
+function loadJobs() {
+    fetch('api.php?action=list')
+    .then(res => res.json())
+    .then(data => {
+        const tbody = document.getElementById('jobList');
+        tbody.innerHTML = '';
+        if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-muted py-3">현재 등록된 알림 내역이 없습니다.</td></tr>`;
+            return;
+        }
+
+        // 전체 데이터 개수를 기준으로 순차적인 번호를 부여하기 위한 역산 처리
+        const totalCount = data.length;
+
+        data.forEach((job, index) => {
+            let badge = job.status === 'ACTIVE' ? '<span class="badge bg-primary">감시중</span>' : '<span class="badge bg-secondary">발송완료</span>';
+            let timeStr = job.duration === '2' ? `${job.time1} ~ ${job.time2}` : `${job.time1}`;
+            
+            // 발송완료 상태일 때만 재가동(초기화) 버튼 노출
+            let actionButtons = '';
+            if(job.status === 'SENT') {
+                actionButtons += `<button class="btn btn-sm btn-success fw-bold me-1" onclick="reactivateJob('${job.id}')">🔄 재가동</button>`;
+            }
+            actionButtons += `<button class="btn btn-sm btn-danger fw-bold" onclick="deleteJob('${job.id}')">삭제</button>`;
+            
+            // 🌟 [수정] 최신 등록 건이 위로 오므로 번호를 역산하여 1, 2, 3 순차 번호 유지
+            // (만약 오래된 순서대로 번호를 매기고 싶다면 totalCount - index 대신 index + 1 사용)
+            let displayNo = totalCount - index;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${displayNo}</td>
+                    <td class="fw-bold">${job.site}</td>
+                    <td><span class="text-success fw-bold">전체 코트 자동조회</span></td>
+                    <td>${job.date}</td>
+                    <td><small>${timeStr}</small></td>
+                    <td>${job.email}</td>
+                    <td>${badge}</td>
+                    <td>${actionButtons}</td>
+                </tr>
+            `;
+        });
+    });
+}
+
+// 폼 서브밋 (등록)
+document.getElementById('jobForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const payload = {
+        site: document.getElementById('site').value,
+        court: "전체",
+        date: document.getElementById('date').value,
+        email: document.getElementById('email').value,
+        duration: document.getElementById('duration').value,
+        time1: document.getElementById('time1').value,
+        time2: document.getElementById('duration').value === '2' ? document.getElementById('time2').value : ''
+    };
+
+    fetch('api.php?action=create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if(res.success) {
+            alert('🚀 전체 코트 통합 감시 스케줄러가 시작되었습니다!');
+            loadJobs();
+        } else {
+            alert('오류: ' + res.message);
+        }
+    });
+});
+
+// 🌟 [수정 추가] 알림 조건 초기화 및 재가동 요청
+function reactivateJob(id) {
+    fetch('api.php?action=reactivate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+    })
+    .then(res => res.json())
+    .then(res => {
+        if(res.success) {
+            loadJobs();
+        } else {
+            alert('초기화 실패: ' + res.message);
+        }
+    });
+}
+
+function deleteJob(id) {
+    if(!confirm('정말 이 알림을 스케줄러에서 삭제하시겠습니까?')) return;
+    fetch('api.php?action=delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+    })
+    .then(res => res.json())
+    .then(res => {
+        if(res.success) { loadJobs(); }
+    });
+}
+
+// 초기화 가동
+document.getElementById('date').valueAsDate = new Date();
+initTimeOptions();
+loadJobs();
+</script>
+</body>
+</html>

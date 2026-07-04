@@ -1,0 +1,24 @@
+function doGet(e) {
+  var url = e.parameter.url;
+  if (!url) {
+    return ContentService.createTextOutput(JSON.stringify({error: "No URL provided"})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+    
+    var responseBody = response.getContentText();
+    
+    // 🌟 에러가 나던 .setHeaders(...) 부분을 깔끔하게 제거했습니다.
+    return ContentService.createTextOutput(responseBody)
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({error: error.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}

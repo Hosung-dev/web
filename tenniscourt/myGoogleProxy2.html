@@ -1,0 +1,55 @@
+function doPost(e) {
+  return handleRequest(e);
+}
+
+function doGet(e) {
+  return handleRequest(e);
+}
+
+function handleRequest(e) {
+  var headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+  
+  try {
+    var targetUrl = e.parameter.url;
+    var postData = e.parameter.postData;
+    
+    // 🌟 [핵심] 체육회 보안망(403)을 뚫기 위해 실제 크롬 브라우저처럼 헤더를 위장합니다.
+    var fetchOptions = {
+      "method": "post",
+      "contentType": "application/x-www-form-urlencoded",
+      "payload": postData,
+      "followRedirects": true,
+      "muteHttpExceptions": true,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "http://www.gimposports.or.kr/",
+        "Origin": "http://www.gimposports.or.kr"
+      }
+    };
+    
+    var response = UrlFetchApp.fetch(targetUrl, fetchOptions);
+    var content = response.getContentText("euc-kr"); // 체육회 서버 인코딩 대응
+    
+    return ContentService.createTextOutput(content)
+      .setMimeType(ContentService.MimeType.TEXT)
+      .setHeaders(headers);
+      
+  } catch (error) {
+    return ContentService.createTextOutput("프록시 에러: " + error.toString())
+      .setMimeType(ContentService.MimeType.TEXT)
+      .setHeaders(headers);
+  }
+}
+
+// 프리플라이트 우회용
+function doOptions(e) {
+  return ContentService.createTextOutput("").setHeaders({
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  });
+}
